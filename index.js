@@ -8,6 +8,11 @@ connectToMongoose();
 app.use(express.json());
 app.use("/api/v1", require('./apis/v1/routers/auth'));
 app.use("/api/v1", require('./apis/v1/routers/users'));
+app.use("/api/v1", require('./apis/v1/routers/guide'));
+app.use("/api/v1", require('./apis/v1/routers/step'));
+
+
+
 
 
 

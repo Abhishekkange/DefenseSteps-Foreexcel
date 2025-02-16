@@ -6,15 +6,11 @@ const StepSchema = new mongoose.Schema({
     ref: 'Guide',
     required: true,
   },
-  step_name: {
+  name: {
     type: String,
     required: true,
   },
-  step_description: {
-    type: String,
-    default: '',
-  },
-  icon: {
+  description: {
     type: String,
     default: '',
   },
@@ -22,16 +18,34 @@ const StepSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
-  content: [
+  created_at: {
+    type: Date,
+    default: Date.now,
+  },
+  updated_at: {
+    type: Date,
+    default: Date.now,
+  },
+  contents: [
     {
-      link: String,
-      content_type: Number, // 0 for icon, 1 for welcome audio, 2 for normal content
-      pos_x: Number,
-      pos_y: Number,
-      pos_z: Number,
-      rot_x: Number,
-      rot_y: Number,
-      rot_z: Number,
+      type: {
+        type: String,
+        required: true,
+      },
+      link: {
+        type: String,
+        required: true,
+      },
+      position: {
+        x: { type: Number, default: 0 },
+        y: { type: Number, default: 0 },
+        z: { type: Number, default: 0 },
+      },
+      rotations: {
+        x: { type: Number, default: 0 },
+        y: { type: Number, default: 0 },
+        z: { type: Number, default: 0 },
+      },
     },
   ],
 });
