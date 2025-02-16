@@ -29,13 +29,14 @@ router.get('/guides', async (req, res) => {
 });
 
 // Get Guide Info by ID
-router.get('/guide-info/:guide_id', async (req, res) => {
-  const { guide_id } = req.params;
+router.get('/guide-info', async (req, res) => {
+  const { guide_id: guide_id } = req.query;
+  console.log(guide_id);
 
   try {
     // Find the guide by the numeric guide_id
   
-    const guide = await Guide.findOne({ guide_id: guide_id }).populate('Step');
+    const guide = await Guide.findOne({ guide_id: guide_id }).populate('steps');
     if (!guide) {
       return res.status(404).json({ status: false, error: 'Guide not found' });
     }
@@ -49,8 +50,6 @@ router.get('/guide-info/:guide_id', async (req, res) => {
         description: guide.description,
         icon: guide.icon,
         welcome_audio: guide.welcome_audio,
-        created_at: guide.created_at.toLocaleString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }),
-        updated_at: guide.updated_at.toLocaleString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }),
         number_of_steps: guide.steps.length,
       },
     };
@@ -61,8 +60,6 @@ router.get('/guide-info/:guide_id', async (req, res) => {
     res.status(500).json({ status: false, error: 'Server error' });
   }
 });
-
-
 
 router.post('/add-guide', upload.fields([
   { name: 'icon', maxCount: 1 },
@@ -149,7 +146,6 @@ router.post('/edit-guide/:guide_id', upload.fields([
   }
 });
 
-
 // Delete Guide by ID
 // Endpoint to delete a guide by guide_id
 router.post('/delete-guide/:guide_id', async (req, res) => {
@@ -173,6 +169,5 @@ router.post('/delete-guide/:guide_id', async (req, res) => {
     res.status(500).json({ status: false, message: 'Server error' });
   }
 });
-
 
 module.exports = router;

@@ -26,25 +26,19 @@ const StepSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  placements: [
+    {
+      type: String,
+      default: '',
+    },
+  ],
   contents: [
     {
       type: {
         type: String,
-        required: true,
       },
       link: {
         type: String,
-        required: true,
-      },
-      position: {
-        x: { type: Number, default: 0 },
-        y: { type: Number, default: 0 },
-        z: { type: Number, default: 0 },
-      },
-      rotations: {
-        x: { type: Number, default: 0 },
-        y: { type: Number, default: 0 },
-        z: { type: Number, default: 0 },
       },
     },
   ],
