@@ -146,7 +146,6 @@ router.post('/edit-guide/:guide_id', upload.fields([
   }
 });
 
-// Delete Guide by ID
 // Endpoint to delete a guide by guide_id
 router.post('/delete-guide/:guide_id', async (req, res) => {
   try {
