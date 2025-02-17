@@ -63,7 +63,7 @@ router.post('/add-step/:guide_id', upload.fields([
       // Return the response
       res.status(201).json({
         status: true,
-        message: 'Step created successfully and added to guide',
+        message: 'Step created successfully and added to guidee',
         step: {
           id: savedStep._id,
           guide_id: savedStep.guide_id,
@@ -71,11 +71,7 @@ router.post('/add-step/:guide_id', upload.fields([
           description: savedStep.description,
           icon: savedStep.icon,
           welcome_audio: savedStep.welcome_audio,
-        },
-        guide: {
-          id: guide._id,
-          steps: guide.steps, // Updated steps array
-        },
+        }
       });
     } catch (err) {
       console.error(err);

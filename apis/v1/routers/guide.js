@@ -87,12 +87,22 @@ router.post('/add-guide', upload.fields([
   { name: 'welcome_audio', maxCount: 1 },
 ]), async (req, res) => {
   try {
-    const { name, description } = req.body;
+    const { guide_id, name, description } = req.body;
     const iconPath = req.files['icon'][0].path; // Path to the uploaded icon file
     const welcomeAudioPath = req.files['welcome_audio'][0].path; // Path to the uploaded welcome audio file
 
-    // Create a new guide
+    // Check if the guide_id already exists in the database
+    const existingGuide = await Guide.findOne({ guide_id });
+    if (existingGuide) {
+      return res.status(400).json({
+        status: false,
+        message: `Guide ID ${guide_id} is already taken. Please choose a different ID.`,
+      });
+    }
+
+    // Create a new guide with the provided guide_id
     const newGuide = new Guide({
+      guide_id, // Use the guide_id provided by the user
       name,
       description,
       icon: iconPath,
@@ -102,18 +112,18 @@ router.post('/add-guide', upload.fields([
     // Save the guide to the database
     await newGuide.save();
 
-    // Return the response
+    // Return the response with the created guide details
     res.status(201).json({
       status: true,
       message: 'Guide created successfully',
       guide: {
+        guide_id: newGuide.guide_id, // Return the guide_id
         name: newGuide.name,
         description: newGuide.description,
         icon: newGuide.icon,
         welcome_audio: newGuide.welcome_audio,
         updated_at: newGuide.updatedAt,
         created_at: newGuide.createdAt,
-        id: newGuide.guide_id,
       },
     });
   } catch (err) {
