@@ -53,13 +53,14 @@ router.post('/add-content', async (req, res) => {
     }
 });
 
-router.put('/edit-content/:id', async (req, res) => {
+router.post('/edit-content', async (req, res) => {
     try {
-        const { guide_id, step_id, type, placement, link } = req.body;
-        const contentId = req.params.id;  // Extract content ID from the URL parameters
+        const { guide_id, step_id, placement, link } = req.body;
 
-        if (!guide_id || !step_id || !type || !placement || !link) {
-            return res.status(400).json({ status: false, message: 'guide_id, step_id, type, placement, and link are required' });
+        console.log(guide_id, step_id, placement, link);
+
+        if (!guide_id || !step_id || !placement || !link) {
+            return res.status(400).json({ status: false, message: 'guide_id, step_id, placement, and link are required' });
         }
 
         // Find the guide by guide_id
@@ -80,17 +81,15 @@ router.put('/edit-content/:id', async (req, res) => {
             return res.status(404).json({ status: false, message: 'Step not found' });
         }
 
-        // Find the content by contentId
-        const content = step.contents.id(contentId);  // Find content by its ObjectId
+        // Find the content that matches the given link
+        const content = step.contents.find(content => content.link === link);  // Find content by matching link
 
         if (!content) {
-            return res.status(404).json({ status: false, message: 'Content not found' });
+            return res.status(404).json({ status: false, message: 'Content with the provided link not found' });
         }
 
-        // Update the content object
-        content.type = type;
+        // Update the placement string for the found content
         content.placement = placement;
-        content.link = link;
 
         // Save the updated step
         step.updated_at = Date.now();
@@ -98,7 +97,7 @@ router.put('/edit-content/:id', async (req, res) => {
 
         res.status(200).json({
             status: true,
-            message: 'Content updated successfully',
+            message: 'Placement updated successfully',
             content,
         });
 
