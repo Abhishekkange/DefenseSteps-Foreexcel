@@ -43,7 +43,7 @@ GuideSchema.pre('save', async function (next) {
   if (!this.guide_id) {
     // If guide_id is not set, generate the next value
     const counter = await Counter.findByIdAndUpdate(
-      { _id: 'guide_id' }, // Use a fixed ID for the counter
+      { _id }, // Use a fixed ID for the counter
       { $inc: { sequence_value: 1 } }, // Increment the sequence_value
       { new: true, upsert: true } // Create the counter if it doesn't exist
     );

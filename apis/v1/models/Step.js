@@ -2,8 +2,7 @@ const mongoose = require('mongoose');
 
 const StepSchema = new mongoose.Schema({
   guide_id: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Guide',
+    type: Number, // Change this from ObjectId to Number
     required: true,
   },
   name: {
@@ -26,12 +25,6 @@ const StepSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
-  placements: [
-    {
-      type: String,
-      default: '',
-    },
-  ],
   contents: [
     {
       type: {
@@ -40,9 +33,16 @@ const StepSchema = new mongoose.Schema({
       link: {
         type: String,
       },
+      placement: {
+        type: String,
+      },
     },
   ],
 });
 
-const Step = mongoose.model('Step', StepSchema);
+// Prevent OverwriteModelError
+delete mongoose.connection.models['Step'];
+
+const Step =  mongoose.model('Step', StepSchema);
+
 module.exports = Step;

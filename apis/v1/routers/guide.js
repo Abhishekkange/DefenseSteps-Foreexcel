@@ -18,30 +18,41 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// Get All Guides
-router.get('/guides', async (req, res) => {
+// Get All guides ka partial data id name,numver if steps , description.
+router.get('/get-all-guides', async (req, res) => {
   try {
-    const guides = await Guide.find({}, { name: 1, description: 1, icon: 1, welcome_audio: 1, _id: 1 });
-    res.status(200).json(guides);
+    const guides = await Guide.find({}, { name: 1, description: 1, guide_id: 1, steps: 1 });
+
+    const formattedGuides = guides.map(guide => ({
+      name: guide.name,
+      description: guide.description,
+      guide_id: guide.guide_id,
+      number_of_steps: guide.steps?.length || 0 // Count steps safely
+    }));
+
+    res.status(200).json(formattedGuides);
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Get Guide Info by ID
+// all info of guide by guide_id all details 
 router.get('/guide-info', async (req, res) => {
-  const { guide_id: guide_id } = req.query;
+  const { guide_id } = req.query; // Extract guide_id from query params
   console.log(guide_id);
 
   try {
-    // Find the guide by the numeric guide_id
-  
-    const guide = await Guide.findOne({ guide_id: guide_id }).populate('steps');
+    // Find the guide by guide_id and populate the steps with all their details
+    const guide = await Guide.findOne({ guide_id }).populate({
+      path: 'steps',
+      model: 'Step', // Ensure correct model reference
+    });
+
     if (!guide) {
       return res.status(404).json({ status: false, error: 'Guide not found' });
     }
 
-    // Format the response
+    // Format response with all guide details, including steps
     const response = {
       status: true,
       guide: {
@@ -51,6 +62,16 @@ router.get('/guide-info', async (req, res) => {
         icon: guide.icon,
         welcome_audio: guide.welcome_audio,
         number_of_steps: guide.steps.length,
+        steps: guide.steps.map((step) => ({
+          id: step.id,
+          name: step.name,
+          description: step.description,
+          welcome_audio: step.welcome_audio,
+          created_at: step.created_at,
+          updated_at: step.updated_at,
+          placements: step.placements, // Since placements is an array
+          contents: step.contents, // Includes type & link of each content item
+        })),
       },
     };
 
