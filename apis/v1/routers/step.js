@@ -46,7 +46,7 @@ router.post('/add-step/:guide_id', upload.fields([
   
       // Create a new step
       const newStep = new Step({
-        guide_id: guide._id, // Store the ObjectId reference of the guide
+        guide_id: guide.guide_id, // Store the ObjectId reference of the guide
         name,
         description,
         icon: iconFile ? iconFile.path : '',
