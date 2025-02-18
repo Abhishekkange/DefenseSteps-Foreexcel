@@ -122,16 +122,12 @@ router.post('/edit-guide/:id', async (req, res) => {
     const { id } = req.params; // Extract _id from the URL parameter
     const { guide_id, name, description, steps } = req.body; // Extract updated data from the request body
 
-    // Validate required fields
-    if (!guide_id || !name) {
-      return res.status(400).json({ message: 'guide_id and name are required' });
-    }
+  
 
     // Find the guide by _id and update it
     const updatedGuide = await Guide.findByIdAndUpdate(
       id,
       {
-        guide_id,
         name,
         description,
         steps,
