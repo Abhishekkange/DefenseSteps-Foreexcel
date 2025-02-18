@@ -4,13 +4,14 @@ const app = express();
 
 
 connectToMongoose();
-
+app.use('/uploads', express.static('uploads'));
 app.use(express.json());
 app.use("/api/v1", require('./apis/v1/routers/auth'));
 app.use("/api/v1", require('./apis/v1/routers/users'));
 app.use("/api/v1", require('./apis/v1/routers/guide'));
 app.use("/api/v1", require('./apis/v1/routers/step'));
 app.use("/api/v1", require('./apis/v1/routers/contents'));
+app.use("/api/v1", require('./apis/v1/routers/upload'));
 
 
 

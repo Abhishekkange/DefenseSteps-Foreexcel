@@ -1,35 +1,31 @@
+const express = require('express');
 const mongoose = require('mongoose');
 
-// Define the Guide schema
-const GuideSchema = new mongoose.Schema({
-  guide_id: {
-    type: Number,
-    unique: true, // Ensure guide_id is unique
-  },
-  name: {
-    type: String,
-    required: true,
-  },
-  description: {
-    type: String,
-    default: '',
-  },
-  icon: {
-    type: String,
-    default: '',
-  },
-  welcome_audio: {
-    type: String,
-    default: '',
-  },
-  steps: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Step', // This references the 'Step' model
-    },
-  ],
+// Content Schema
+const contentSchema = new mongoose.Schema({
+  type: String,
+  link: String,
+  placement: String,
 });
 
-const Guide = mongoose.model('Guide', GuideSchema);
+// Step Schema
+const stepSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  description: { type: String, default: '' },
+  created_at: { type: Date, default: Date.now },
+  updated_at: { type: Date, default: Date.now },
+  contents: [contentSchema], // Embed content schema
+});
 
+// Guide Schema
+const guideSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  description: { type: String, default: '' },
+  created_at: { type: Date, default: Date.now },
+  updated_at: { type: Date, default: Date.now },
+  steps: [stepSchema], // Embed step schema
+});
+
+// Guide Model
+const Guide = mongoose.model('Guide', guideSchema);
 module.exports = Guide;

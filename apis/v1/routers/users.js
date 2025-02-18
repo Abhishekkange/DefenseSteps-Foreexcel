@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+
+const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 
 // Get All Users
@@ -11,6 +13,7 @@ router.get('/users', async (req, res) => {
         id: user._id, // Assuming _id is used as the unique identifier
         username: user.username,
         email: user.email,
+        created_at: user.created_at,
         role: user.role, // Keeping role as number
       }));
   
@@ -24,70 +27,47 @@ router.get('/users', async (req, res) => {
   });
   
 // Update User Role
-router.post('/edit-user', async (req, res) => {
+router.post('/edit-user/:id', async (req, res) => {
     const { username, new_role } = req.body;
+    const id = req.params.id;
   
     try {
-      // Validate request fields
-      if (!username || new_role === undefined) {
-        return res.status(400).json({
-          status: false,
-          message: "The username field is required.",
-          errors: {
-            username: username ? [] : ["The username field is required."],
-            role: new_role !== undefined ? [] : ["The role field is required."]
-          }
-        });
-      }
-  
-      // Validate new_role
-      if (![0, 1, 2].includes(new_role)) {
-        return res.status(400).json({ error: 'Invalid role. Role must be 0, 1, or 2.' });
-      }
-  
+      
       // Find user by username
-      const user = await User.findOne({ username });
+      const user = await User.findOne({ _id: id });
       if (!user) {
         return res.status(404).json({ error: 'User not found' });
+      } else{
+ // Update user role
+ user.role = new_role;
+ await user.save();
+
+ res.status(200).json({
+   status: true,
+   message: "User updated successfully",
+   user: {
+     id: user._id,
+     username: user.username,
+     email: user.email,
+     role: user.role,
+     
+   }
+ });
+        
       }
   
-      // Check if username is already taken
-      const existingUser = await User.findOne({ username, _id: { $ne: user._id } });
-      if (existingUser) {
-        return res.status(400).json({
-          status: false,
-          message: "The username has already been taken.",
-          errors: {
-            username: ["The username has already been taken."]
-          }
-        });
-      }
-  
-      // Update user role
-      user.role = new_role;
-      await user.save();
-  
-      res.status(200).json({
-        status: true,
-        message: "User updated successfully",
-        user: {
-          id: user._id,
-          username: user.username,
-          email: user.email,
-          role: user.role,
-          
-        }
-      });
+     
     } catch (err) {
       res.status(500).json({ error: 'Server error' });
     }
   });
 
-router.post('/delete-user', async (req, res) => {
+router.post('/delete-user/:id', async (req, res) => {
     const { username } = req.body;
+    const id = req.params.id;
   
     try {
-      const user = await User.findOneAndDelete({ username });
+      const user = await User.findOneAndDelete({ _id: id });
       if (!user) {
         return res.status(404).json({
           status: false,
@@ -101,6 +81,54 @@ router.post('/delete-user', async (req, res) => {
       });
     } catch (err) {
       res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+
+  //Add a new user
+
+  router.post('/add-user', async (req, res) => {
+    try {
+      const { email, username, password, role } = req.body;
+  
+      // Validate required fields
+      if (!email || !username || !password) {
+        return res.status(400).json({ status: false, message: 'Email, username, and password are required' });
+      }
+  
+      // Check if user already exists
+      const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+      if (existingUser) {
+        return res.status(400).json({ status: false, message: 'Username or Email already exists' });
+      }
+  
+      // Hash the password before saving
+      const hashedPassword = await bcrypt.hash(password, 10);
+  
+      // Create a new user
+      const newUser = new User({
+        email,
+        username,
+        password: hashedPassword,
+        role: role || 2, // Default role is 2 (trainee)
+      });
+  
+      await newUser.save();
+  
+      res.status(201).json({
+        status: true,
+        message: 'User created successfully',
+        user: {
+          id: newUser._id,
+          username: newUser.username,
+          email: newUser.email,
+          role: newUser.role,
+          created_at: newUser.created_at,
+        },
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ status: false, message: 'Internal server error' });
     }
   });
   

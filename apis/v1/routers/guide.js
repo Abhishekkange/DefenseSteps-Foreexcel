@@ -21,162 +21,140 @@ const upload = multer({ storage });
 // Get All guides ka partial data id name,numver if steps , description.
 router.get('/get-all-guides', async (req, res) => {
   try {
-    const guides = await Guide.find({}, { name: 1, description: 1, guide_id: 1, steps: 1 });
+    const guides = await Guide.find({}, '_id name description steps created_at updated_at');
 
+    // Transform the response to include step count
     const formattedGuides = guides.map(guide => ({
+      _id: guide._id,
       name: guide.name,
       description: guide.description,
-      guide_id: guide.guide_id,
-      number_of_steps: guide.steps?.length || 0 // Count steps safely
+      steps_count: guide.steps.length, // Number of steps
+      created_at: guide.created_at,
+      updated_at: guide.updated_at
     }));
 
-    res.status(200).json(formattedGuides);
-  } catch (err) {
-    res.status(500).json({ error: 'Server error' });
+    res.status(200).json({ guides: formattedGuides });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
+
 
 // all info of guide by guide_id all details 
+// Get Guide by ID
 router.get('/guide-info', async (req, res) => {
-  const { guide_id } = req.query; // Extract guide_id from query params
-  console.log(guide_id);
-
   try {
-    // Find the guide by guide_id and populate the steps with all their details
-    const guide = await Guide.findOne({ guide_id }).populate({
-      path: 'steps',
-      model: 'Step', // Ensure correct model reference
-    });
+    const { id } = req.query; // Get the guide ID from query parameters
 
-    if (!guide) {
-      return res.status(404).json({ status: false, error: 'Guide not found' });
+    if (!id) {
+      return res.status(400).json({ status: false, message: 'Guide ID is required' });
     }
 
-    // Format response with all guide details, including steps
-    const response = {
-      status: true,
-      guide: {
-        id: guide.id,
-        name: guide.name,
-        description: guide.description,
-        icon: guide.icon,
-        welcome_audio: guide.welcome_audio,
-        number_of_steps: guide.steps.length,
-        steps: guide.steps.map((step) => ({
-          id: step.id,
-          name: step.name,
-          description: step.description,
-          welcome_audio: step.welcome_audio,
-          created_at: step.created_at,
-          updated_at: step.updated_at,
-          placements: step.placements, // Since placements is an array
-          contents: step.contents, // Includes type & link of each content item
-        })),
-      },
-    };
+    // Fetch guide from MongoDB
+    const guide = await Guide.findById(id);
 
-    res.status(200).json(response);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ status: false, error: 'Server error' });
-  }
-});
-
-router.post('/add-guide', upload.fields([
-  { name: 'icon', maxCount: 1 },
-  { name: 'welcome_audio', maxCount: 1 },
-]), async (req, res) => {
-  try {
-    const { guide_id, name, description } = req.body;
-    const iconPath = req.files['icon'][0].path; // Path to the uploaded icon file
-    const welcomeAudioPath = req.files['welcome_audio'][0].path; // Path to the uploaded welcome audio file
-
-    // Check if the guide_id already exists in the database
-    const existingGuide = await Guide.findOne({ guide_id });
-    if (existingGuide) {
-      return res.status(400).json({
-        status: false,
-        message: `Guide ID ${guide_id} is already taken. Please choose a different ID.`,
-      });
-    }
-
-    // Create a new guide with the provided guide_id
-    const newGuide = new Guide({
-      guide_id, // Use the guide_id provided by the user
-      name,
-      description,
-      icon: iconPath,
-      welcome_audio: welcomeAudioPath,
-    });
-
-    // Save the guide to the database
-    await newGuide.save();
-
-    // Return the response with the created guide details
-    res.status(201).json({
-      status: true,
-      message: 'Guide created successfully',
-      guide: {
-        guide_id: newGuide.guide_id, // Return the guide_id
-        name: newGuide.name,
-        description: newGuide.description,
-        icon: newGuide.icon,
-        welcome_audio: newGuide.welcome_audio,
-        updated_at: newGuide.updatedAt,
-        created_at: newGuide.createdAt,
-      },
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ status: false, message: 'Server error' });
-  }
-});
-// Edit Guide by ID (POST)
-router.post('/edit-guide/:guide_id', upload.fields([
-  { name: 'icon', maxCount: 1 },
-  { name: 'welcome_audio', maxCount: 1 },
-]), async (req, res) => {
-  try {
-    const { guide_id } = req.params; // Get guide_id from URL parameters
-    const { name, description } = req.body; // Get updated fields from request body
-    const iconFile = req.files['icon'] ? req.files['icon'][0] : null; // Check if icon file is uploaded
-    const welcomeAudioFile = req.files['welcome_audio'] ? req.files['welcome_audio'][0] : null; // Check if welcome_audio file is uploaded
-
-    // Find the guide by guide_id
-    const guide = await Guide.findOne({ guide_id });
     if (!guide) {
       return res.status(404).json({ status: false, message: 'Guide not found' });
     }
 
-    // Update the guide fields
-    if (name) guide.name = name;
-    if (description) guide.description = description;
-    if (iconFile) guide.icon = iconFile.path; // Update icon path if a new file is uploaded
-    if (welcomeAudioFile) guide.welcome_audio = welcomeAudioFile.path; // Update welcome_audio path if a new file is uploaded
-
-    // Save the updated guide
-    await guide.save();
-
-    // Return the response
     res.status(200).json({
       status: true,
-      message: 'Guide updated successfully',
-      guide: {
-        id: guide.guide_id,
-        name: guide.name,
-        description: guide.description,
-        icon: guide.icon,
-        welcome_audio: guide.welcome_audio,
-        updated_at: guide.updatedAt, // Correctly returning the updated_at timestamp
-        created_at: guide.createdAt, // Keeping the created_at field
-      },
+      guide,
     });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ status: false, message: 'Server error' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ status: false, message: 'Internal server error' });
   }
 });
 
+
+// Add Guide Route
+router.post('/add-guide', async (req, res) => {
+  try {
+    const { name, description, steps } = req.body;
+
+    // Validate required fields
+    if (!name) {
+      return res.status(400).json({ message: 'Name is required' });
+    }
+
+    // Create a new guide document
+    const newGuide = new Guide({
+      name,
+      description,
+      steps,
+    });
+
+    // Save the guide to MongoDB
+    await newGuide.save();
+
+    res.status(201).json({ message: 'Guide added successfully', guide: newGuide });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Edit Guide by ID (POST)
+router.get('/edit-guide/:id', async (req, res) => {
+  try {
+    const { id } = req.params; // Extract _id from the URL parameter
+
+    // Find the guide by _id
+    const guide = await Guide.findById(id);
+
+    // If guide not found, return 404
+    if (!guide) {
+      return res.status(404).json({ message: 'Guide not found' });
+    }
+
+    // Return the guide document
+    res.status(200).json({ message: 'Guide fetched successfully', guide });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+router.post('/edit-guide/:id', async (req, res) => {
+  try {
+    const { id } = req.params; // Extract _id from the URL parameter
+    const { guide_id, name, description, steps } = req.body; // Extract updated data from the request body
+
+    // Validate required fields
+    if (!guide_id || !name) {
+      return res.status(400).json({ message: 'guide_id and name are required' });
+    }
+
+    // Find the guide by _id and update it
+    const updatedGuide = await Guide.findByIdAndUpdate(
+      id,
+      {
+        guide_id,
+        name,
+        description,
+        steps,
+      },
+      { new: true } // Return the updated document
+    );
+
+    // If guide not found, return 404
+    if (!updatedGuide) {
+      return res.status(404).json({ message: 'Guide not found' });
+    }
+
+    // Return the updated guide document
+    res.status(200).json({ message: 'Guide updated successfully', guide: updatedGuide });
+  } catch (error) {
+    console.error(error);
+    if (error.code === 11000) {
+      res.status(400).json({ message: 'Duplicate guide_id. guide_id must be unique.' });
+    } else {
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  }
+});
 // Endpoint to delete a guide by guide_id
 router.post('/delete-guide/:guide_id', async (req, res) => {
   try {

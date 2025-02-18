@@ -21,6 +21,7 @@ const UserSchema = new mongoose.Schema({
     type: Number,
     default: 2, // 0 for admin, 1 for editor, 2 for trainee
   },
+  created_at: { type: Date, default: Date.now },
   otp: {
     type: String,
     default: null,
