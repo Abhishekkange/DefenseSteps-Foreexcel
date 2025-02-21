@@ -16,6 +16,8 @@ app.use("/api/v1", require('./apis/v1/routers/guide'));
 app.use("/api/v1", require('./apis/v1/routers/step'));
 app.use("/api/v1", require('./apis/v1/routers/contents'));
 app.use("/api/v1", require('./apis/v1/routers/upload'));
+app.use("/api/v1", require('./apis/v1/routers/text-to-speech'));
+
 
 
 

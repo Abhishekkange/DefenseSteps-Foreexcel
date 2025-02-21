@@ -157,7 +157,7 @@ router.post('/delete-guide/:guide_id', async (req, res) => {
     const { guide_id } = req.params; // Get guide_id from URL parameters
 
     // Find the guide by guide_id and delete it
-    const deletedGuide = await Guide.findOneAndDelete({ guide_id });
+    const deletedGuide = await Guide.findOneAndDelete({ _id: guide_id });
 
     if (!deletedGuide) {
       return res.status(404).json({ status: false, message: 'Guide not found' });
