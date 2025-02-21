@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 const contentSchema = new mongoose.Schema({
   type: String,
   link: String,
-  placement: String,
+  placement: [{ type: String }], // Change placement to an array of strings
 });
 
 // Step Schema
