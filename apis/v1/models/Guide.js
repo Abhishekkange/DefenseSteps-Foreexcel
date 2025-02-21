@@ -11,6 +11,7 @@ const contentSchema = new mongoose.Schema({
 // Step Schema
 const stepSchema = new mongoose.Schema({
   name: { type: String, required: true },
+  welcome_audio: { type: String, required: true },
   description: { type: String, default: '' },
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date, default: Date.now },
