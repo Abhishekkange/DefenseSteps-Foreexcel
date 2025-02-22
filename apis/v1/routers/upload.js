@@ -6,7 +6,7 @@ const fs = require('fs');
 const router = express.Router();
 
 // Ensure uploads folder exists
-const uploadDir = path.join(__dirname, '../uploads');
+const uploadDir = path.join(__dirname, '../../../uploads');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -23,7 +23,12 @@ const storage = multer.diskStorage({
     }
 });
 
-const upload = multer({ storage: storage,limits: { fileSize: 50 * 1024 * 1024 } });
+const upload = multer({ storage: storage, limits: { fileSize: 50 * 1024 * 1024 } });
+
+// Function to remove specific extensions
+const removeExtension = (filename) => {
+    return filename.replace(/\.(png|jpg|mp4|mp3|glb)$/i, '');
+};
 
 // File Upload API
 router.post('/upload-file', upload.single('file'), (req, res) => {
@@ -32,12 +37,13 @@ router.post('/upload-file', upload.single('file'), (req, res) => {
     }
 
     // Construct file URL (assuming the server runs on localhost:5000)
-    const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    const fileUrl = `https://tasl.runtimetheory.com/uploads/${req.file.filename}`;
 
     res.status(200).json({
         status: true,
         message: 'File uploaded successfully',
-        file_url: fileUrl
+        file_url: fileUrl,
+        file_name: removeExtension(req.file.originalname), // Remove extensions before returning
     });
 });
 

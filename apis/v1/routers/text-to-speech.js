@@ -7,9 +7,9 @@ const router = express.Router();
 
 // List of available audio file links
 const audioLinks = [
-  'https://example.com/audio1.mp3',
-  'https://example.com/audio2.mp3',
-  'https://example.com/audio3.mp3'
+  'https://res.cloudinary.com/dgdaiyqiv/video/upload/v1740141005/fjeoowp6ufyzdty72uip.mp3',
+  'https://res.cloudinary.com/dgdaiyqiv/video/upload/v1740141002/gtiysqzvugv6vfzgppl1.mp3',
+  'https://res.cloudinary.com/dgdaiyqiv/video/upload/v1740141001/xn7y4dnidxgnljsfrctb.mp3'
 ];
 
 router.post('/text-to-speech', async (req, res) => {
@@ -27,7 +27,7 @@ router.post('/text-to-speech', async (req, res) => {
     const newEntry = new MyModel({ text, link: randomLink });
     await newEntry.save();
 
-    res.status(200).json({ message: 'Text-to-speech entry created', link: randomLink });
+    res.status(200).json({ message: 'Text-to-speech entry created', link: randomLink ,text:text});
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });

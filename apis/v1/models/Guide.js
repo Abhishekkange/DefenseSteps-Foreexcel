@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 const contentSchema = new mongoose.Schema({
   type: String,
   link: String,
+  filename: String,
   placement: [{ type: String }], // Change placement to an array of strings
 });
 

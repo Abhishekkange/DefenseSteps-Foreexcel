@@ -4,14 +4,14 @@ const Guide = require('../models/Guide');
 
 router.post('/add-content', async (req, res) => {
     try {
-        const { guide_id, step_id, type, placement, link } = req.body;
+        const { guide_id, step_id, type, placement, link,filename } = req.body;
 
         if (!guide_id || !step_id || !type || !placement || !link) {
             return res.status(400).json({ status: false, message: 'guide_id, step_id, type, placement, and link are required' });
         }
 
         // Find the guide and populate its steps
-        const guide = await Guide.findOne({ guide_id }).populate('steps');
+        const guide = await Guide.findById(guide_id).populate('steps');
         if (!guide) {
             return res.status(404).json({ status: false, message: 'Guide not found' });
         }
@@ -33,6 +33,7 @@ router.post('/add-content', async (req, res) => {
             type,
             placement,
             link,
+            filename
         };
 
         // Add the content object to the contents array
