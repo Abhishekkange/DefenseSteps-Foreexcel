@@ -138,30 +138,64 @@ router.post('/forgot-password', async (req, res) => {
 });
 
 // Reset Password Endpoint
-router.post('/reset-password', async (req, res) => {
-  const { email, otp, new_password } = req.body;
 
+
+// Middleware to verify JWT and extract user ID
+const verifyToken = (token) => {
   try {
-    // Find user by email
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ error: 'Email not found' });
-    }
-
-    // Check if OTP matches and is not expired
-    if (user.otp !== otp || user.otpExpires < Date.now()) {
-      return res.status(400).json({ error: 'Incorrect OTP or OTP expired' });
-    }
-
-    // Update password
-    user.password = new_password;
-    user.otp = null;
-    user.otpExpires = null;
-    await user.save();
-
-    res.status(200).json({ message: 'Password reset successfully' });
+    return jwt.verify(token, 'abhishek'); // Replace with your secret key
   } catch (err) {
-    res.status(500).json({ error: 'Server error' });
+    return null;
+  }
+};
+
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { adminToken, adminPassword, userToken, newPassword } = req.body;
+
+    if (!adminToken || !adminPassword || !userToken || !newPassword) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    // Verify Admin Token
+    const adminDecoded = verifyToken(adminToken);
+    if (!adminDecoded) {
+      return res.status(401).json({ message: 'Invalid or expired admin token' });
+    }
+
+    // Find Admin User
+    const adminUser = await User.findById(adminDecoded._id);
+    if (!adminUser || adminUser.role !== 0) {
+      return res.status(403).json({ message: 'Unauthorized: Not an admin' });
+    }
+
+    // Compare Admin Password
+    const isPasswordValid = await bcrypt.compare(adminPassword, adminUser.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: 'Incorrect admin password' });
+    }
+
+    // Verify Normal User Token
+    const userDecoded = verifyToken(userToken);
+    if (!userDecoded) {
+      return res.status(401).json({ message: 'Invalid or expired user token' });
+    }
+
+    // Find Normal User
+    const normalUser = await User.findById(userDecoded._id);
+    if (!normalUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Hash New Password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    normalUser.password = hashedPassword;
+    await normalUser.save();
+
+    res.json({ message: 'Password reset successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 

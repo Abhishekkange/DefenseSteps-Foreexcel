@@ -42,9 +42,7 @@ UserSchema.pre('save', async function (next) {
 
 // Generate JWT token
 UserSchema.methods.generateAuthToken = function () {
-  return jwt.sign({ _id: this._id, role: this.role }, 'abhishek', {
-    expiresIn: '1h',
-  });
+  return jwt.sign({ _id: this._id, role: this.role }, 'abhishek');
 };
 
 // Compare password
