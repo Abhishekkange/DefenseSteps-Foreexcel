@@ -125,44 +125,15 @@ router.post('/edit-guide/:id', async (req, res) => {
   
 
     // Find the guide by _id and update it
-    const oldGuide = await Guide.findById(id);
-
-if (!oldGuide) {
-  return res.status(404).json({ message: "Guide not found" });
-}
-
-// Merge the old placement data with the new update request
-const updatedSteps = steps.map((newStep) => {
-  const oldStep = oldGuide.steps.find((s) => s._id.toString() === newStep._id);
-
-  if (!oldStep) return newStep; // If step doesn't exist in old guide, keep the new one
-
-  return {
-    ...newStep,
-    contents: newStep.contents.map((newContent) => {
-      const oldContent = oldStep.contents.find(
-        (c) => c._id.toString() === newContent._id
-      );
-
-      if (!oldContent) return newContent; // If content is new, use it directly
-
-      return {
-        ...newContent,
-        placement: oldContent.placement, // Preserve the old placement
-      };
-    }),
-  };
-});
-
-const updatedGuide = await Guide.findByIdAndUpdate(
-  id,
-  {
-    name,
-    description,
-    steps: updatedSteps,
-  },
-  { new: true } // Return the updated document
-);
+    const updatedGuide = await Guide.findByIdAndUpdate(
+      id,
+      {
+        name,
+        description,
+        steps,
+      },
+      { new: true } // Return the updated document
+    );
 
     // If guide not found, return 404
     if (!updatedGuide) {
@@ -202,33 +173,5 @@ router.post('/delete-guide/:guide_id', async (req, res) => {
     res.status(500).json({ status: false, message: 'Server error' });
   }
 });
-
-router.post('/edit-annotation', async (req, res) => {
-    try {
-      const { guide_id, step_id, annotation } = req.body;
-  
-      if (!guide_id || !step_id || !annotation) {
-        return res.status(400).json({ message: 'guide_id, step_id, and annotation are required' });
-      }
-  
-      // Find the guide and update the specific step's annotation
-      const updatedGuide = await Guide.findOneAndUpdate(
-        { _id: guide_id, "steps._id": step_id },
-        { $set: { "steps.$.annotations": annotation } },
-        { new: true }
-      );
-  
-      if (!updatedGuide) {
-        return res.status(404).json({ message: 'Guide or Step not found' });
-      }
-  
-      res.json({ message: 'Annotation updated successfully', updatedGuide });
-    } catch (error) {
-      console.error('Error updating annotation:', error);
-      res.status(500).json({ message: 'Server error' });
-    }
-  });
-
-
 
 module.exports = router;

@@ -17,6 +17,7 @@ const stepSchema = new mongoose.Schema({
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date, default: Date.now },
   contents: [contentSchema], // Embed content schema
+  annotations:  {type: String},
 });
 
 // Guide Schema
