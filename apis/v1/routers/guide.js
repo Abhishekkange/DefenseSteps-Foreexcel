@@ -4,6 +4,7 @@ const Guide = require('../models/Guide'); // Import the Guide model
 const Step = require('../models/Step')
 const multer = require('multer');
 const path = require('path');
+const GuideEdit = require('../models/GuideEdit')
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -17,7 +18,6 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage });
-
 // Get All guides ka partial data id name,numver if steps , description.
 router.get('/get-all-guides', async (req, res) => {
   try {
@@ -117,6 +117,77 @@ router.get('/edit-guide/:id', async (req, res) => {
   }
 });
 
+// 📌 1. Create an Edit Request
+router.post('/request-guide-edit/:guideId', async (req, res) => {
+  try {
+    const { guideId } = req.params;
+    const userId = req.body.user_id; // Assume user_id is sent in the request
+    const newGuideData = { ...req.body };
+    delete newGuideData.user_id; // Remove user_id from comparison
+
+    // Fetch existing guide
+    const existingGuide = await Guide.findById(guideId);
+    if (!existingGuide) return res.status(404).json({ error: 'Guide not found' });
+
+    // Compare changes (only store modified fields)
+    const updatedFields = {};
+    Object.keys(newGuideData).forEach(key => {
+      if (JSON.stringify(existingGuide[key]) !== JSON.stringify(newGuideData[key])) {
+        updatedFields[key] = newGuideData[key];
+      }
+    });
+
+    // If no changes detected
+    if (Object.keys(updatedFields).length === 0) {
+      return res.status(400).json({ message: "No changes detected" });
+    }
+
+    // Save edit request
+    const guideEdit = new GuideEdit({
+      guide_id: guideId,
+      user_id: userId,
+      updated_fields: updatedFields
+    });
+
+    await guideEdit.save();
+    res.json({ message: "Edit request created", edit_id: guideEdit._id, status: "pending" });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 📌 2. Fetch All Pending Edits (Admin)
+router.get('/pending-edits', async (req, res) => {
+  try {
+    const pendingEdits = await GuideEdit.find({ status: 'pending' });
+    res.json(pendingEdits);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 📌 3. Approve an Edit Request
+router.post('/approve-edit/:editId', async (req, res) => {
+  try {
+    const editRequest = await GuideEdit.findById(req.params.editId);
+    if (!editRequest) return res.status(404).json({ error: 'Edit request not found' });
+
+    // Apply changes to Guide
+    await Guide.findByIdAndUpdate(editRequest.guide_id, { $set: editRequest.updated_fields });
+
+    // Update the edit request status
+    editRequest.status = 'approved';
+    await editRequest.save();
+
+    res.json({ message: "Edit approved and applied to the guide", guide_id: editRequest.guide_id, status: "approved" });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
 router.post('/edit-guide/:id', async (req, res) => {
   try {
     const { id } = req.params; // Extract _id from the URL parameter
@@ -180,6 +251,8 @@ const updatedGuide = await Guide.findByIdAndUpdate(
     }
   }
 });
+
+
 // Endpoint to delete a guide by guide_id
 router.post('/delete-guide/:guide_id', async (req, res) => {
   try {
@@ -210,7 +283,7 @@ router.post('/edit-annotation', async (req, res) => {
       if (!guide_id || !step_id || !annotation) {
         return res.status(400).json({ message: 'guide_id, step_id, and annotation are required' });
       }
-  
+
       // Find the guide and update the specific step's annotation
       const updatedGuide = await Guide.findOneAndUpdate(
         { _id: guide_id, "steps._id": step_id },
@@ -228,6 +301,23 @@ router.post('/edit-annotation', async (req, res) => {
       res.status(500).json({ message: 'Server error' });
     }
   });
+
+  router.post('/reject-guide-edit/:editId', async (req, res) => {
+    try {
+      const { editId } = req.params;
+  
+      // Find and update the guide edit request status
+      const guideEdit = await GuideEdit.findByIdAndUpdate(editId, { status: "rejected" }, { new: true });
+      if (!guideEdit) return res.status(404).json({ error: "Edit request not found" });
+  
+      res.json({ message: "Guide edit request rejected", edit_id: guideEdit._id });
+  
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  
 
 
 

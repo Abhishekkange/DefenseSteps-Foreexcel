@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Guide = require('../models/Guide');
+const ContentEdit = require('../models/contentEdit')
 
 router.post('/add-content', async (req, res) => {
     try {
@@ -90,6 +91,100 @@ router.post('/edit-content', async (req, res) => {
     } catch (err) {
       console.error(err);
       res.status(500).send('Server error');
+    }
+  });
+
+  router.post('/request-edit-content', async (req, res) => {
+    try {
+      const { guide_id, step_id, content_id, placement, user_id } = req.body;
+  
+      if (!guide_id || !step_id || !content_id || !placement || !user_id) {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
+  
+      // Find the guide
+      const guide = await Guide.findById(guide_id);
+      if (!guide) return res.status(404).json({ error: 'Guide not found' });
+  
+      // Find the step
+      const step = guide.steps.id(step_id);
+      if (!step) return res.status(404).json({ error: 'Step not found' });
+  
+      // Find the content
+      const content = step.contents.id(content_id);
+      if (!content) return res.status(404).json({ error: 'Content not found' });
+  
+      // Compare old and new placement
+      if (JSON.stringify(content.placement) === JSON.stringify(placement)) {
+        return res.status(400).json({ message: "No changes detected" });
+      }
+  
+      // Store edit request
+      const contentEdit = new ContentEdit({
+        guide_id,
+        step_id,
+        content_id,
+        user_id,
+        old_placement: content.placement, // Store existing placement
+        new_placement: placement, // Store requested change
+        status: "pending"
+      });
+  
+      await contentEdit.save();
+      res.json({ message: "Edit request created", edit_id: contentEdit._id, status: "pending" });
+  
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  router.post('/approve-content-edit/:editId', async (req, res) => {
+    try {
+      const { editId } = req.params;
+  
+      // Find edit request
+      const contentEdit = await ContentEdit.findById(editId);
+      if (!contentEdit) return res.status(404).json({ error: "Edit request not found" });
+  
+      // Find the guide, step, and content
+      const guide = await Guide.findById(contentEdit.guide_id);
+      if (!guide) return res.status(404).json({ error: "Guide not found" });
+  
+      const step = guide.steps.id(contentEdit.step_id);
+      if (!step) return res.status(404).json({ error: "Step not found" });
+  
+      const content = step.contents.id(contentEdit.content_id);
+      if (!content) return res.status(404).json({ error: "Content not found" });
+  
+      // Apply the approved change
+      content.placement = contentEdit.new_placement;
+  
+      // Save updated guide
+      await guide.save();
+  
+      // Update the request status
+      contentEdit.status = "approved";
+      await contentEdit.save();
+  
+      res.json({ message: "Edit approved and applied" });
+  
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  router.post('/reject-content-edit/:editId', async (req, res) => {
+    try {
+      const { editId } = req.params;
+  
+      // Find and update the request status
+      const contentEdit = await ContentEdit.findByIdAndUpdate(editId, { status: "rejected" }, { new: true });
+      if (!contentEdit) return res.status(404).json({ error: "Edit request not found" });
+  
+      res.json({ message: "Edit request rejected" });
+  
+    } catch (error) {
+      res.status(500).json({ error: error.message });
     }
   });
 
