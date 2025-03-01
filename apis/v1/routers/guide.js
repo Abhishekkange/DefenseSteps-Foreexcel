@@ -6,6 +6,26 @@ const multer = require('multer');
 const path = require('path');
 const GuideEdit = require('../models/GuideEdit')
 
+const jwt = require('jsonwebtoken');
+
+const authMiddleware = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Access denied. No token provided.' });
+  }
+
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, 'abhishek'); // Replace with process.env.JWT_SECRET
+    req.user = decoded; // Store decoded user info in req.user
+    next();
+  } catch (error) {
+    res.status(403).json({ error: 'Invalid or expired token' });
+  }
+};
+
+module.exports = authMiddleware;
+
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -118,34 +138,81 @@ router.get('/edit-guide/:id', async (req, res) => {
 });
 
 // 📌 1. Create an Edit Request
-router.post('/request-guide-edit/:guideId', async (req, res) => {
+router.post('/request-guide-edit/:guideId', authMiddleware, async (req, res) => {
   try {
     const { guideId } = req.params;
-    const userId = req.body.user_id; // Assume user_id is sent in the request
-    const newGuideData = { ...req.body };
-    delete newGuideData.user_id; // Remove user_id from comparison
+    const userId = req.user._id; // Extract user ID from JWT token
+    const newGuideData = req.body;
 
     // Fetch existing guide
     const existingGuide = await Guide.findById(guideId);
-    if (!existingGuide) return res.status(404).json({ error: 'Guide not found' });
+    if (!existingGuide) {
+      return res.status(404).json({ error: 'Guide not found' });
+    }
 
-    // Compare changes (only store modified fields)
+    // Compare changes
     const updatedFields = {};
-    Object.keys(newGuideData).forEach(key => {
-      if (JSON.stringify(existingGuide[key]) !== JSON.stringify(newGuideData[key])) {
-        updatedFields[key] = newGuideData[key];
+    const { steps: newSteps, ...otherUpdates } = newGuideData; // Separate steps from other fields
+
+    // Handle non-step fields
+    Object.keys(otherUpdates).forEach(key => {
+      if (JSON.stringify(existingGuide[key]) !== JSON.stringify(otherUpdates[key])) {
+        updatedFields[key] = otherUpdates[key];
       }
     });
 
-    // If no changes detected
+    // Handle Step Updates
+    if (newSteps) {
+      const updatedSteps = [];
+      const removedSteps = [];
+      const addedSteps = [];
+
+      const existingSteps = existingGuide.steps.map(step => step._id.toString());
+      const newStepIds = newSteps.map(step => step._id?.toString()).filter(id => id);
+
+      // Identify Removed Steps
+      removedSteps.push(...existingSteps.filter(id => !newStepIds.includes(id)));
+
+      // Identify Added Steps (steps without an _id)
+      addedSteps.push(...newSteps.filter(step => !step._id));
+
+      // Identify Modified Steps
+      newSteps.forEach(newStep => {
+        if (newStep._id) {
+          const oldStep = existingGuide.steps.find(s => s._id.toString() === newStep._id);
+          if (oldStep) {
+            const stepChanges = {};
+            Object.keys(newStep).forEach(field => {
+              if (JSON.stringify(newStep[field]) !== JSON.stringify(oldStep[field])) {
+                stepChanges[field] = newStep[field];
+              }
+            });
+
+            if (Object.keys(stepChanges).length > 0) {
+              updatedSteps.push({ step_id: newStep._id, updated_values: stepChanges });
+            }
+          }
+        }
+      });
+
+      // Store Step Changes in updatedFields
+      if (updatedSteps.length || removedSteps.length || addedSteps.length) {
+        updatedFields.steps = {};
+        if (updatedSteps.length) updatedFields.steps.updatedSteps = updatedSteps;
+        if (removedSteps.length) updatedFields.steps.removedSteps = removedSteps;
+        if (addedSteps.length) updatedFields.steps.addedSteps = addedSteps;
+      }
+    }
+
+    // If No Changes Detected
     if (Object.keys(updatedFields).length === 0) {
       return res.status(400).json({ message: "No changes detected" });
     }
 
-    // Save edit request
+    // Save Edit Request
     const guideEdit = new GuideEdit({
       guide_id: guideId,
-      user_id: userId,
+      user_id: userId, // User ID from token
       updated_fields: updatedFields
     });
 
@@ -173,14 +240,52 @@ router.post('/approve-edit/:editId', async (req, res) => {
     const editRequest = await GuideEdit.findById(req.params.editId);
     if (!editRequest) return res.status(404).json({ error: 'Edit request not found' });
 
-    // Apply changes to Guide
-    await Guide.findByIdAndUpdate(editRequest.guide_id, { $set: editRequest.updated_fields });
+    // Fetch the original guide
+    const guide = await Guide.findById(editRequest.guide_id);
+    if (!guide) return res.status(404).json({ error: 'Guide not found' });
 
-    // Update the edit request status
+    // Apply top-level field changes
+    Object.keys(editRequest.updated_fields).forEach(key => {
+      if (key !== "steps") {
+        guide[key] = editRequest.updated_fields[key];
+      }
+    });
+
+    // Apply step-level updates
+    if (editRequest.updated_fields.steps) {
+      const { updatedSteps, removedSteps, addedSteps } = editRequest.updated_fields.steps;
+
+      // Process step updates
+      if (updatedSteps) {
+        updatedSteps.forEach(update => {
+          let step = guide.steps.id(update.step_id);
+          if (step) {
+            Object.keys(update.updated_values).forEach(field => {
+              step[field] = update.updated_values[field];
+            });
+          }
+        });
+      }
+
+      // Process step removals
+      if (removedSteps) {
+        guide.steps = guide.steps.filter(step => !removedSteps.includes(step._id.toString()));
+      }
+
+      // Process step additions
+      if (addedSteps) {
+        guide.steps.push(...addedSteps);
+      }
+    }
+
+    // Save updated guide
+    await guide.save();
+
+    // Mark edit request as approved
     editRequest.status = 'approved';
     await editRequest.save();
 
-    res.json({ message: "Edit approved and applied to the guide", guide_id: editRequest.guide_id, status: "approved" });
+    res.json({ message: "Edit approved and applied to the guide", guide_id: guide._id, status: "approved" });
 
   } catch (error) {
     res.status(500).json({ error: error.message });
