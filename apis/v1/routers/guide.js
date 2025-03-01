@@ -138,6 +138,7 @@ router.get('/edit-guide/:id', async (req, res) => {
 });
 
 // 📌 1. Create an Edit Request
+// Request Guide Edit API
 router.post('/request-guide-edit/:guideId', authMiddleware, async (req, res) => {
   try {
     const { guideId } = req.params;
@@ -150,11 +151,11 @@ router.post('/request-guide-edit/:guideId', authMiddleware, async (req, res) => 
       return res.status(404).json({ error: 'Guide not found' });
     }
 
-    // Compare changes
+    // Compare changes while ignoring 'placement'
     const updatedFields = {};
-    const { steps: newSteps, ...otherUpdates } = newGuideData; // Separate steps from other fields
+    const { steps: newSteps, placement, ...otherUpdates } = newGuideData; // Exclude placement
 
-    // Handle non-step fields
+    // Handle non-step fields (ignoring placement)
     Object.keys(otherUpdates).forEach(key => {
       if (JSON.stringify(existingGuide[key]) !== JSON.stringify(otherUpdates[key])) {
         updatedFields[key] = otherUpdates[key];
@@ -176,14 +177,14 @@ router.post('/request-guide-edit/:guideId', authMiddleware, async (req, res) => 
       // Identify Added Steps (steps without an _id)
       addedSteps.push(...newSteps.filter(step => !step._id));
 
-      // Identify Modified Steps
+      // Identify Modified Steps (excluding placement field)
       newSteps.forEach(newStep => {
         if (newStep._id) {
           const oldStep = existingGuide.steps.find(s => s._id.toString() === newStep._id);
           if (oldStep) {
             const stepChanges = {};
             Object.keys(newStep).forEach(field => {
-              if (JSON.stringify(newStep[field]) !== JSON.stringify(oldStep[field])) {
+              if (field !== "placement" && JSON.stringify(newStep[field]) !== JSON.stringify(oldStep[field])) {
                 stepChanges[field] = newStep[field];
               }
             });
@@ -223,6 +224,8 @@ router.post('/request-guide-edit/:guideId', authMiddleware, async (req, res) => 
     res.status(500).json({ error: error.message });
   }
 });
+
+module.exports = router;
 
 // 📌 2. Fetch All Pending Edits (Admin)
 router.get('/pending-edits', async (req, res) => {
